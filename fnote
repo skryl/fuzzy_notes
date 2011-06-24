@@ -7,7 +7,7 @@ require 'optparse'
 require 'fuzzy_notes'
 
 options = {}
-need_extra_args = [:cat, :edit]
+need_extra_args = [:cat, :edit, :encrypt, :decrypt]
 optparse = OptionParser.new do |opts|
   opts.banner = "Usage: fnote [options] [keyword1, keyword2...]"
 
@@ -15,6 +15,8 @@ optparse = OptionParser.new do |opts|
   opts.on("-l", "--list", "List all notes in note directory with statistics") { |opt| options[:list] = true }
   opts.on("-i", "--info", "Alias for 'list'") { |opt| options[:info] = true }
   opts.on("-v", "--verbose", "Print debug info") { |opt| options[:verbose] = true }
+  opts.on("-e", "--encrypt", "Encrypt matching notes") { |opt| options[:encrypt] = true }
+  opts.on("-d", "--decrypt", "Decrypt matching notes") { |opt| options[:decrypt] = true }
   opts.on("-h", "--help", "Show this message") { 
     puts opts 
     exit
@@ -38,6 +40,10 @@ if options[:list] || options[:info]
   notes.info
 elsif options[:cat]
   notes.cat
-else
+elsif options[:encrypt]
+  notes.encrypt
+elsif options[:decrypt]
+  notes.decrypt
+else 
   notes.edit
 end
