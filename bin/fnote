@@ -1,0 +1,63 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+require 'yaml'
+require 'rubygems'
+require 'fuzzy_notes'
+
+CONFIG_PATH = "#{ENV['HOME']}/.fuzzy_notes"
+
+options = {}
+need_extra_args = [:print, :edit, :encrypt, :decrypt]
+optparse = OptionParser.new do |opts|
+  opts.banner = "Usage: fnote [options] [keyword1, keyword2...]"
+
+  opts.on("-c", "--config [CONFIG]", "Specify config file") { |opt| options[:config] = opt}
+  opts.on("-p", "--print", "Dump matching notes to stdout") { |opt| options[:print] = true }
+  opts.on("-l", "--list", "List statistics for matching notes") { |opt| options[:list] = true }
+  opts.on("-i", "--info", "Alias for 'list'") { |opt| options[:info] = true }
+  opts.on("-s", "--search", "Perform a full text search when matching notes") { |opt| options[:search] = true }
+  opts.on("-v", "--verbose", "Enable debug output") { |opt| options[:verbose] = true }
+  opts.on("-e", "--encrypt", "Encrypt matching notes") { |opt| options[:encrypt] = true }
+  opts.on("-d", "--decrypt", "Decrypt matching notes") { |opt| options[:decrypt] = true }
+  opts.on("-h", "--help", "Show this message") { 
+    puts opts 
+    exit
+  }
+end
+
+begin
+  optparse.parse!(ARGV)                                                                                                                                                                                                 
+  options[:edit] = true if options.values.compact.empty?
+  # check for extra args if necessary
+  if need_extra_args.any? {|opt| options[opt]} && ARGV.empty?
+    puts optparse
+    exit
+  end
+rescue OptionParser::ParseError => e
+  puts optparse
+end
+
+config_path = \
+  options[:config] && File.exists?(options[:config]) && options[:config] ||
+  File.exists?(CONFIG_PATH) && CONFIG_PATH
+
+config = config_path ? YAML::load_file(config_path) : {}
+puts "Warning: config file not found, using defaults" if config.empty?
+
+notes = FuzzyNotes::Notes.new(:log_level => (options[:verbose] || config[:verbose]) ? 0 : 1,
+                              :note_paths => config[:note_paths], 
+                              :full_text_search => options[:search] || config[:full_text_search],
+                              :keywords => ARGV)
+                             
+if options[:list] || options[:info]
+  notes.info
+elsif options[:print]
+  notes.cat
+elsif options[:encrypt]
+  notes.encrypt
+elsif options[:decrypt]
+  notes.decrypt
+else 
+  notes.edit
+end
