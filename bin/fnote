@@ -1,5 +1,8 @@
 #!/usr/bin/env ruby
 
+# test without installing gem
+#$LOAD_PATH.unshift "#{File.dirname(File.expand_path(__FILE__))}/../lib/"
+
 require 'optparse'
 require 'yaml'
 require 'rubygems'
@@ -8,7 +11,6 @@ require 'fuzzy_notes'
 CONFIG_PATH = "#{ENV['HOME']}/.fuzzy_notes"
 
 options = {}
-need_extra_args = [:print, :edit, :encrypt, :decrypt]
 optparse = OptionParser.new do |opts|
   opts.banner = "Usage: fnote [options] [keyword1, keyword2...]"
 
@@ -26,10 +28,14 @@ optparse = OptionParser.new do |opts|
   }
 end
 
+need_extra_args = [:print, :edit, :encrypt, :decrypt]
+
 begin
   optparse.parse!(ARGV)                                                                                                                                                                                                 
+  # edit is the default action
   options[:edit] = true if options.values.compact.empty?
-  # check for extra args if necessary
+
+  # check for required args
   if need_extra_args.any? {|opt| options[opt]} && ARGV.empty?
     puts optparse
     exit
@@ -38,6 +44,8 @@ rescue OptionParser::ParseError => e
   puts optparse
 end
 
+# fetch config 
+#
 config_path = \
   options[:config] && File.exists?(options[:config]) && options[:config] ||
   File.exists?(CONFIG_PATH) && CONFIG_PATH
@@ -45,11 +53,15 @@ config_path = \
 config = config_path ? YAML::load_file(config_path) : {}
 puts "Warning: config file not found, using defaults" if config.empty?
 
+# find matching notes
+# 
 notes = FuzzyNotes::Notes.new(:log_level => (options[:verbose] || config[:verbose]) ? 0 : 1,
                               :note_paths => config[:note_paths], 
                               :full_text_search => options[:search] || config[:full_text_search],
                               :keywords => ARGV)
                              
+# perform action on matching notes 
+# 
 if options[:list] || options[:info]
   notes.info
 elsif options[:print]

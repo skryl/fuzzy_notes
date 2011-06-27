@@ -1,9 +1,8 @@
 require 'buffered_logger'
 
 class FuzzyNotes::Log
-  LOG_LEVEL = 1
-
   private_class_method :new
+  LOG_LEVEL = 1
 
   def self.init_log(log_level)
     @log = BufferedLogger.new(STDOUT, log_level)
@@ -13,6 +12,7 @@ class FuzzyNotes::Log
     @log ||=  BufferedLogger.new(STDOUT, LOG_LEVEL) 
   end
 end
+
 
 module FuzzyNotes::Logger
   def log

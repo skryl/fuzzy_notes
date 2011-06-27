@@ -1,5 +1,3 @@
-require 'gibberish'
-
 class FuzzyNotes::Notes
   include FuzzyNotes::Logger
 
@@ -13,22 +11,67 @@ NOTE_PATHS=[ "#{ENV['HOME']}/notes" ]
 VALID_EXTENSIONS=%w( txt enc )
 KEYWORDS = []
 
-attr_reader :notes, :all_notes
+attr_reader :matching_notes, :all_notes
 
 def initialize(params = {})
   parse_init_params(params)
+  FuzzyNotes::Log.init_log(@log_level)
+  log.debug "[debug] init attributes: \n#{attributes}"
 
-  unless @note_paths.any? { |p| File.exists?(p) }
-    log.error "ERROR: no valid note paths found"
+  unless note_paths_valid?
+    log.error "ERROR: no valid note paths found, exiting"
     exit
   end
 
-  @all_notes, @notes = \
+  @all_notes, @matching_notes = \
     FuzzyNotes::FuzzyFinder.find(@note_paths, { :keywords => @keywords, 
                                                 :extensions => @extensions,
                                                 :full_text_search => params[:full_text_search] })
 end
 
+# dump all matching notes to stdout
+#
+def cat
+  matching_notes.each do |n|
+    puts "=== #{n} ===\n\n"
+    puts "#{File.read(n)}\n"
+  end
+end
+
+
+# edit all matching notes in EDITOR
+#
+def edit
+  exec("#{editor} #{bashify_paths(matching_notes)}") if !matching_notes.empty?
+end
+
+
+# encrypt matching notes 
+#
+def encrypt
+  FuzzyNotes::Cipher.apply_cipher(matching_notes)
+end
+
+
+# decrypt matching notes
+#
+def decrypt
+  FuzzyNotes::Cipher.apply_cipher(matching_notes, true)
+end
+
+
+# view WC info for all/matching notes
+def info
+  paths = bashify_paths(matching_notes.empty? ? all_notes : matching_notes)
+  puts `wc $(find #{paths} -type f)` 
+end
+
+
+private
+
+
+# initialize params or use defaults
+#
 def parse_init_params(params)
   INIT_PARAMS.each do |param|
     klass = self.class
@@ -37,74 +80,13 @@ def parse_init_params(params)
     instance_variable_set("@#{param}", params[param] || 
                                        (klass.const_defined?(const_name) ? klass.const_get(const_name) : nil) )
   end
-  FuzzyNotes::Log.init_log(@log_level)
-
-  ivar_values = instance_variables.inject("") { |s, ivar| s << "  #{ivar} => #{eval(ivar).inspect}\n" }
-  log.debug "[debug] init attributes: \n#{ivar_values}"
 end
 
 
-# cat all matching notes to stdout
-def cat
-  notes.each do |n|
-    puts "=== #{n} ===\n\n"
-    puts "#{File.read(n)}\n"
+def note_paths_valid?
+  @note_paths.any? do |p| 
+    File.exists?(p) || log.info("Warning: note path '#{p}' not found")
   end
-end
-
-
-# edit all matching notes in EDITOR
-def edit
-  exec("#{editor} #{bashify_paths(notes)}") if !notes.empty?
-end
-
-
-def encrypt
-  apply_cipher
-end
-
-
-def decrypt
-  apply_cipher(true)
-end
-
-
-# view WC info for all/matching notes
-def info
-  paths = bashify_paths(notes.empty? ? all_notes : notes)
-  puts `wc $(find #{paths} -type f)` 
-end
-
-
-private
-
-
-def apply_cipher(decrypt = false)
-  extension, action = decrypt ? ['.txt', 'dec'] : ['.enc', 'enc']
-  password = get_password
-  cipher = Gibberish::AES.new(password)
-  notes.each do |note|
-    log.info "#{action} '#{note}'"
-    pathname = File.dirname(note)
-    filename = File.basename(note, '.*')
-    begin
-      ciphertext = cipher.send(action, File.read(note))
-      log.debug "[debug] writing encrypted content to: #{pathname}/#{filename}#{extension}"
-      File.open("#{pathname}/#{filename}#{extension}", 'w') { |f| f << ciphertext }
-      log.debug "[debug] deleting unencrypted file: #{note}"
-      File.delete(note)
-    rescue OpenSSL::Cipher::CipherError => e
-      log.error "ERROR: #{e}"
-    end
-  end
-end
-
-
-def get_password
-  printf 'Enter password (will not be shown):'
-  `stty -echo`; password = STDIN.gets.strip;`stty echo`; puts
-  log.debug "[debug] entered password: #{password.inspect}"
-  password
 end
 
 
@@ -112,5 +94,11 @@ end
 def bashify_paths(paths)
   paths.map {|n| "\"#{n}\""}.join(' ')
 end
+
+
+def attributes
+  instance_variables.inject("") { |s, ivar| s << "  #{ivar} => #{eval(ivar).inspect}\n" }
+end
+
 
 end

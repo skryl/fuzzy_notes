@@ -4,6 +4,7 @@ class FuzzyNotes::FuzzyFinder
   extend FuzzyNotes::Logger
   private_class_method :new
 
+
   def self.find(path, params = {})
     keywords, extensions, search = params.values_at(:keywords, :extensions, :full_text_search)
     match_proc = method(search ? :full_text_match? : :file_name_match?)
@@ -20,16 +21,20 @@ class FuzzyNotes::FuzzyFinder
     [all_files.sort, matching_files.sort]
   end
 
+
 private
+
 
   def self.extension_match?(file_path, extensions)
     file_name = File.basename(file_path)
     !extensions || extensions.any? {|ext| /\.#{ext}$/ === file_name }
   end
 
+
   def self.file_name_match?(file_path, keywords)
     keywords ? keywords.any? { |name| /#{name}/ === file_path } : false
   end
+
 
   def self.full_text_match?(file_path, keywords)
     if keywords && !keywords.empty?
@@ -38,5 +43,6 @@ private
     else false 
     end
   end
+
 
 end
