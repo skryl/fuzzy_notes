@@ -1,1 +1,36 @@
 README
+
+fuzzy_notes is a command line note manager with some cool features:
+
+1. Emacs/Vim/Any CLI text editor support
+2. Fuzzy path search and full text search across one or more note directories
+3. OpenSSL encryption
+4. Evernote integration (coming soon...)
+
+
+CONFIG
+
+A config file is not required if you're ok with fuzzy_note's defaults settings
+outlined below:
+
+:note_paths:
+  - ~/notes
+:verbose: false
+:full_text_search: false
+
+fuzzy_notes looks for a ~/.fuzzy_notes config file or the -c option and
+overwrites the defaults with the contents of the YAML file specified. 
+
+
+USAGE
+
+fnote [options] [keyword1, keyword2...]
+    -c, --config [CONFIG]            Specify config file
+    -p, --print                      Dump matching notes to stdout
+    -l, --list                       List statistics for matching notes
+    -i, --info                       Alias for 'list'
+    -s, --search                     Perform a full text search when matching notes
+    -v, --verbose                    Enable debug output
+    -e, --encrypt                    Encrypt matching notes
+    -d, --decrypt                    Decrypt matching notes
+    -h, --help                       Show usage
