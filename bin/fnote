@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 # test without installing gem
-#$LOAD_PATH.unshift "#{File.dirname(File.expand_path(__FILE__))}/../lib/"
+$LOAD_PATH.unshift "#{File.dirname(File.expand_path(__FILE__))}/../lib/"
 
 require 'optparse'
 require 'yaml'

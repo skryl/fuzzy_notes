@@ -16,10 +16,10 @@ attr_reader :matching_notes, :all_notes
 def initialize(params = {})
   parse_init_params(params)
   FuzzyNotes::Log.init_log(@log_level)
-  log.debug "[debug] init attributes: \n#{attributes}"
+  log.debug "init attributes: \n#{attributes}"
 
   unless note_paths_valid?
-    log.error "ERROR: no valid note paths found, exiting"
+    log.error "no valid note paths found, exiting"
     exit
   end
 

@@ -8,7 +8,7 @@ class FuzzyNotes::FuzzyFinder
   def self.find(path, params = {})
     keywords, extensions, search = params.values_at(:keywords, :extensions, :full_text_search)
     match_proc = method(search ? :full_text_match? : :file_name_match?)
-    log.debug "[debug] search path: #{path}"
+    log.debug "search path: #{path}"
 
     all_files, matching_files = [], []
     Find.find(*path) do |file_path| 
