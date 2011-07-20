@@ -1,37 +1,69 @@
 require 'gibberish'
 
 class FuzzyNotes::Cipher
-  extend FuzzyNotes::Logger
-  private_class_method :new
+  include FuzzyNotes::Logger
 
-  def self.apply_cipher(file_paths, decrypt = false)
-    extension, action = decrypt ? ['.txt', :dec] : ['.enc', :enc]
-    password = get_password
-    cipher = Gibberish::AES.new(password)
+  PLAINTEXT_EXT  = 'txt'
+  CIPHERTEXT_EXT = 'enc'
 
-    file_paths.each do |path|
-      log.info "#{action} '#{path}'"
-      pathname = File.dirname(path)
-      filename = File.basename(path, '.*')
+  def encrypt(file_paths, opts = {})
+    @action = :enc
+    apply_cipher(file_paths, opts)
+  end
 
-      begin
-        ciphertext = cipher.send(action, File.read(path))
-        log.debug "writing #{decrypt ? 'un' : ''}encrypted content to: #{pathname}/#{filename}#{extension}"
-        File.open("#{pathname}/#{filename}#{extension}", 'w') { |f| f << ciphertext }
-        log.debug "deleting #{decrypt ? '' : 'un'}encrypted file: #{path}"
-        File.delete(path)
-      rescue OpenSSL::Cipher::CipherError => e
-        log.error e
-      end
+  def decrypt(file_paths, opts = {})
+    @action = :dec
+    apply_cipher(file_paths, opts)
+  end
+
+private
+
+  def apply_cipher(file_paths, opts)
+    cipher = Gibberish::AES.new(get_password)
+    case file_paths
+    when Array
+      file_paths.each { |path| process_file(path, cipher, opts) }
+    when String
+      process_file(file_paths, cipher, opts)
     end
   end
 
+  def process_file(path, cipher, opts) 
+    begin
+      log.debug "#{@action} '#{path}'"
+      content  = cipher.send(@action, File.read(path))
+      replace_file!(path, content) if opts[:replace] 
+      content
+    rescue OpenSSL::Cipher::CipherError => e
+      log.error e
+    end
+  end
 
-  def self.get_password
+  def replace_file!(path, contents)
+    dirname  = File.dirname(path)
+    filename = File.basename(path, '.*')
+
+    log.debug "writing #{decrypt? ? 'un' : ''}encrypted content to: #{dirname}/#{filename}.#{extension}"
+    File.open("#{dirname}/#{filename}.#{extension}", 'w') { |f| f << contents }
+
+    log.debug "deleting #{decrypt? ? '' : 'un'}encrypted file: #{path}"
+    File.delete(path)
+  end
+
+  def extension
+    decrypt? ? PLAINTEXT_EXT : CIPHERTEXT_EXT
+  end
+
+  def decrypt?
+    @action == :dec
+  end
+
+  def get_password
     printf 'Enter password (will not be shown):'
-    `stty -echo`; password = STDIN.gets.strip;`stty echo`; puts
+    `stty -echo`; password = STDIN.gets.strip;`stty echo`; puts "\n\n"
     log.debug "entered password: #{password.inspect}"
     password
   end
+
 
 end

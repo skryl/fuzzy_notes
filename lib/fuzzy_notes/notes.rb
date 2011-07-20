@@ -1,104 +1,112 @@
 class FuzzyNotes::Notes
   include FuzzyNotes::Logger
 
-INIT_PARAMS = :log_level, :editor, :note_paths, :valid_extensions, :keywords
+module Defaults
+  LOG_LEVEL = 1
+  EDITOR='vim'
+  NOTE_PATHS=[ "#{ENV['HOME']}/notes" ]
+  VALID_EXTENSIONS=%w( txt enc )
+  KEYWORDS = []
 
-# param defaults
-#
-LOG_LEVEL = 1
-EDITOR='vim'
-NOTE_PATHS=[ "#{ENV['HOME']}/notes" ]
-VALID_EXTENSIONS=%w( txt enc )
-KEYWORDS = []
+  def self.const_missing(*args); end
+end
 
-attr_reader :matching_notes, :all_notes
+  OPTS = [:log_level, :editor, :note_paths, :valid_extensions, :keywords].freeze
 
-def initialize(params = {})
-  parse_init_params(params)
-  FuzzyNotes::Log.init_log(@log_level)
-  log.debug "init attributes: \n#{attributes}"
+  attr_reader :matching_notes, :all_notes
 
-  unless note_paths_valid?
-    log.error "no valid note paths found, exiting"
-    exit
+  def initialize(params = {})
+    parse_init_params(params)
+    FuzzyNotes::Log.init_log(@log_level)
+    log.debug "init attributes: \n#{inspect_instance_vars}"
+
+    unless note_paths_valid?
+      log.error "no valid note paths found, exiting"
+      exit
+    end
+
+    finder = FuzzyNotes::FuzzyFinder.new(@note_paths, 
+                                        { :keywords => @keywords, 
+                                          :extensions => @extensions, 
+                                          :full_text_search => params[:full_text_search] })
+    @all_notes, @matching_notes = finder.all_files, finder.matching_files
   end
 
-  @all_notes, @matching_notes = \
-    FuzzyNotes::FuzzyFinder.find(@note_paths, { :keywords => @keywords, 
-                                                :extensions => @extensions,
-                                                :full_text_search => params[:full_text_search] })
-end
-
-# dump all matching notes to stdout
-#
-def cat
-  matching_notes.each do |n|
-    puts "=== #{n} ===\n\n"
-    puts "#{File.read(n)}\n"
+  # initialize params or use defaults
+  #
+  def parse_init_params(params)
+    OPTS.each do |param|
+      klass = self.class
+      klass.send(:attr_reader, param)
+      default_const = param.to_s.upcase
+      instance_variable_set("@#{param}", params[param] || Defaults.const_get(default_const) )
+    end
   end
-end
+  private :parse_init_params
 
+  # dump all matching notes to stdout
+  #
+  def cat
+    matching_notes.each do |note_path|
+      contents = \
+        if encrypted?(note_path)
+          puts "decrypting #{note_path}"
+          FuzzyNotes::Cipher.new.decrypt(note_path)
+        else
+          File.read(note_path)
+        end
 
-# edit all matching notes in EDITOR
-#
-def edit
-  exec("#{editor} #{bashify_paths(matching_notes)}") if !matching_notes.empty?
-end
+      puts "=== #{note_path} ===\n\n"
+      puts "#{contents}\n"
+    end
+  end
 
+  # edit all matching notes in EDITOR
+  #
+  def edit
+    exec("#{editor} #{bashify_paths(matching_notes)}") unless matching_notes.empty?
+  end
 
-# encrypt matching notes 
-#
-def encrypt
-  FuzzyNotes::Cipher.apply_cipher(matching_notes)
-end
+  # encrypt matching notes 
+  #
+  def encrypt
+    FuzzyNotes::Cipher.new.encrypt(matching_notes, :replace => true)
+  end
 
+  # decrypt matching notes
+  #
+  def decrypt
+    FuzzyNotes::Cipher.new.decrypt(matching_notes, :replace => true)
+  end
 
-# decrypt matching notes
-#
-def decrypt
-  FuzzyNotes::Cipher.apply_cipher(matching_notes, true)
-end
-
-
-# view WC info for all/matching notes
-def info
-  paths = bashify_paths(matching_notes.empty? ? all_notes : matching_notes)
-  puts `wc $(find #{paths} -type f)` 
-end
-
+  # view WC info for all/matching notes
+  #
+  def info
+    paths = bashify_paths(matching_notes.empty? ? all_notes : matching_notes)
+    puts `wc $(find #{paths} -type f)` 
+  end
 
 private
 
-
-# initialize params or use defaults
-#
-def parse_init_params(params)
-  INIT_PARAMS.each do |param|
-    klass = self.class
-    klass.send(:attr_reader, param)
-    const_name = param.to_s.upcase
-    instance_variable_set("@#{param}", params[param] || 
-                                       (klass.const_defined?(const_name) ? klass.const_get(const_name) : nil) )
+  def note_paths_valid?
+    @note_paths.any? do |p| 
+      File.exists?(p) || log.info("Warning: note path '#{p}' not found")
+    end
   end
-end
 
-
-def note_paths_valid?
-  @note_paths.any? do |p| 
-    File.exists?(p) || log.info("Warning: note path '#{p}' not found")
+  # bash style, space seperated fashion
+  #
+  def bashify_paths(paths)
+    paths.map {|n| "\"#{n}\""}.join(' ')
   end
-end
 
+  def inspect_instance_vars
+    instance_variables.inject("") { |s, ivar| s << "  #{ivar} => #{eval(ivar).inspect}\n" }
+  end
 
-# lists matching note paths in bash style, space seperated fashion
-def bashify_paths(paths)
-  paths.map {|n| "\"#{n}\""}.join(' ')
-end
-
-
-def attributes
-  instance_variables.inject("") { |s, ivar| s << "  #{ivar} => #{eval(ivar).inspect}\n" }
-end
+  def encrypted?(path)
+    File.extname(path)[1..-1] == FuzzyNotes::Cipher::CIPHERTEXT_EXT
+  end
 
 
 end
