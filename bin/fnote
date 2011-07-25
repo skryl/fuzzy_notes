@@ -55,9 +55,10 @@ puts "Warning: config file not found, using defaults" if config.empty?
 
 # find matching notes
 # 
-notes = FuzzyNotes::Notes.new(:log_level => (options[:verbose] || config[:verbose]) ? 0 : 1,
+notes = FuzzyNotes::Notes.new(:editor => config[:editor],
                               :note_paths => config[:note_paths], 
                               :full_text_search => options[:search] || config[:full_text_search],
+                              :log_level => (options[:verbose] || config[:verbose]) ? 0 : 1,
                               :keywords => ARGV)
                              
 # perform action on matching notes 
