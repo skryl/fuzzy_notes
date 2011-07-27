@@ -24,8 +24,9 @@ private
     case file_paths
     when Array
       file_paths.each do |path| 
-        if self.class.encrypted?(path)
-          log.warn "#{Colors::PATH} #{path} #{Colors::DEFAULT} is already encrypted, skipping"
+        if encrypt? && self.class.encrypted?(path) ||
+           decrypt? && !self.class.encrypted?(path)
+          log.warn "#{Colors::PATH} #{path} #{Colors::DEFAULT} is #{encrypt? ? 'already' : 'not'} encrypted, skipping"
           next
         end
         process_file(path, cipher, opts)
@@ -59,6 +60,10 @@ private
 
   def extension
     decrypt? ? PLAINTEXT_EXT : CIPHERTEXT_EXT
+  end
+
+  def encrypt?
+    @action == :enc
   end
 
   def decrypt?
