@@ -23,7 +23,13 @@ private
     cipher = Gibberish::AES.new(get_password)
     case file_paths
     when Array
-      file_paths.each { |path| process_file(path, cipher, opts) }
+      file_paths.each do |path| 
+        if self.class.encrypted?(path)
+          log.warn "#{Colors::PATH} #{path} #{Colors::DEFAULT} is already encrypted, skipping"
+          next
+        end
+        process_file(path, cipher, opts)
+      end
     when String
       process_file(file_paths, cipher, opts)
     end
@@ -32,7 +38,7 @@ private
   def process_file(path, cipher, opts) 
     begin
       log.debug "#{@action} '#{path}'"
-      content  = cipher.send(@action, File.read(path))
+      content = cipher.send(@action, File.read(path))
       replace_file!(path, content) if opts[:replace] 
       content
     rescue OpenSSL::Cipher::CipherError => e
@@ -58,5 +64,10 @@ private
   def decrypt?
     @action == :dec
   end
+
+  def self.encrypted?(path)
+    File.extname(path)[1..-1] == CIPHERTEXT_EXT
+  end
+
 
 end

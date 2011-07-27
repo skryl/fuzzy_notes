@@ -53,7 +53,7 @@ end
   def cat
     matching_notes.each do |note_path|
       contents = \
-        if encrypted?(note_path)
+        if FuzzyNotes::Cipher.encrypted?(note_path)
           log.info "decrypting note #{Colors::PATH} #{note_path}"
           FuzzyNotes::Cipher.new.decrypt(note_path)
         elsif evernote?(note_path)
@@ -131,10 +131,6 @@ private
 
   def inspect_instance_vars
     instance_variables.inject("") { |s, ivar| s << "  #{ivar} => #{eval(ivar).inspect}\n" }
-  end
-
-  def encrypted?(path)
-    File.extname(path)[1..-1] == FuzzyNotes::Cipher::CIPHERTEXT_EXT
   end
 
   def evernote?(path)

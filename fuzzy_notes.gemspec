@@ -1,6 +1,6 @@
 spec = Gem::Specification.new do |s|
   s.name = 'fuzzy_notes'
-  s.version = '0.0.7'
+  s.version = '0.0.8'
 
   s.summary = "A cli note manager"
   s.description = %{A note manager with fuzzy path search, full text search, evernote sync, and encryption capabilities}
