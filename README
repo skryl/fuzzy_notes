@@ -1,5 +1,5 @@
-README
-
+ABOUT
+-------------------------------------------------------------------------
 fuzzy_notes is a command line note manager with some cool features:
 
 1. Supports Emacs/Vim/MacVim and other CLI text editors
@@ -8,7 +8,8 @@ fuzzy_notes is a command line note manager with some cool features:
 4. Evernote synchronization
 
 
-== config ==
+CONFIG
+-------------------------------------------------------------------------
 
 fuzzy_notes looks for a ~/.fuzzy_notes config file or the -c option and
 overwrites the defaults with the contents of the YAML file specified. 
@@ -35,7 +36,8 @@ Get yourself a "client application" API key from Evernote
 application" API key uses OAuth to authenticate and will not work.
 
 
-== usage ==
+USAGE
+-------------------------------------------------------------------------
 
 fnote [options] [keyword1, keyword2...]
   -c, --config [CONFIG]            Specify config file
