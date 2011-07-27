@@ -2,22 +2,26 @@ class FuzzyNotes::Notes
   include FuzzyNotes::Logger
 
 module Defaults
-  LOG_LEVEL = 1
-  EDITOR='vim'
-  NOTE_PATHS=[ "#{ENV['HOME']}/notes" ]
-  VALID_EXTENSIONS=%w( txt enc )
-  KEYWORDS = []
+  LOG_LEVEL   = 1
+  EDITOR      = 'vim'
+  COLOR       = true
+  KEYWORDS    = []
+  NOTE_PATHS  = [ "#{ENV['HOME']}/notes" ]
+  VALID_EXTENSIONS = [ 'txt', 
+                       FuzzyNotes::Cipher::CIPHERTEXT_EXT, 
+                       FuzzyNotes::Cipher::PLAINTEXT_EXT, 
+                       FuzzyNotes::EvernoteSync::NOTE_EXT ]
 
   def self.const_missing(*args); end
 end
 
-  OPTS = [:log_level, :editor, :note_paths, :valid_extensions, :keywords].freeze
+  OPTS = [:log_level, :color, :editor, :note_paths, :valid_extensions, :keywords, :evernote_params].freeze
 
   attr_reader :matching_notes, :all_notes
 
   def initialize(params = {})
     parse_init_params(params)
-    FuzzyNotes::Log.init_log(@log_level)
+    FuzzyNotes::Log.init_log(@log_level, @color)
     log.debug "init attributes: \n#{inspect_instance_vars}"
 
     unless note_paths_valid?
@@ -39,7 +43,7 @@ end
       klass = self.class
       klass.send(:attr_reader, param)
       default_const = param.to_s.upcase
-      instance_variable_set("@#{param}", params[param] || Defaults.const_get(default_const) )
+      instance_variable_set("@#{param}", params.include?(param) ? params[param] : Defaults.const_get(default_const) )
     end
   end
   private :parse_init_params
@@ -50,14 +54,18 @@ end
     matching_notes.each do |note_path|
       contents = \
         if encrypted?(note_path)
-          puts "decrypting #{note_path}"
+          log.info "decrypting note #{Colors::PATH} #{note_path}"
           FuzzyNotes::Cipher.new.decrypt(note_path)
+        elsif evernote?(note_path)
+          FuzzyNotes::EvernoteSync.sanitize_evernote(note_path)
         else
           File.read(note_path)
         end
 
-      puts "=== #{note_path} ===\n\n"
-      puts "#{contents}\n"
+      unless contents.blank?
+        log.info "=== #{note_path} ===\n\n"
+        puts "#{contents}\n"
+      end
     end
   end
 
@@ -70,13 +78,19 @@ end
   # encrypt matching notes 
   #
   def encrypt
-    FuzzyNotes::Cipher.new.encrypt(matching_notes, :replace => true)
+    return if matching_notes.empty?
+    log.info "encrypting matching notes:"
+    print_notes
+    log.indent(2) { FuzzyNotes::Cipher.new.encrypt(matching_notes, :replace => true) }
   end
 
   # decrypt matching notes
   #
   def decrypt
-    FuzzyNotes::Cipher.new.decrypt(matching_notes, :replace => true)
+    return if matching_notes.empty?
+    log.info "decrypting matching notes:"
+    print_notes
+    log.indent(2) { FuzzyNotes::Cipher.new.decrypt(matching_notes, :replace => true) }
   end
 
   # view WC info for all/matching notes
@@ -86,11 +100,26 @@ end
     puts `wc $(find #{paths} -type f)` 
   end
 
+  def list
+    print_notes(:all => true)
+  end
+
+  def evernote_sync
+    unless @evernote_params
+      log.error("no evernote configuration found!")
+      return
+    end
+
+    log.info "syncing evernote directory #{Colors::PATH} #{@evernote_params[:note_path]}"
+    FuzzyNotes::EvernoteSync.new(@evernote_params).sync
+    log.print_blank_line
+  end
+
 private
 
   def note_paths_valid?
     @note_paths.any? do |p| 
-      File.exists?(p) || log.info("Warning: note path '#{p}' not found")
+      File.directory?(p) || log.warn("note path #{Colors::PATH} #{p} does not exist")
     end
   end
 
@@ -108,5 +137,13 @@ private
     File.extname(path)[1..-1] == FuzzyNotes::Cipher::CIPHERTEXT_EXT
   end
 
+  def evernote?(path)
+    File.extname(path)[1..-1] == FuzzyNotes::EvernoteSync::NOTE_EXT
+  end
+
+  def print_notes(params = {})
+    notes = (matching_notes.empty? && params[:all]) ? all_notes : matching_notes
+    log.indent(2) { notes.each { |note| log.info "#{Colors::PATH} #{note}" } }
+  end
 
 end

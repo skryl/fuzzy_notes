@@ -2,6 +2,7 @@ require 'gibberish'
 
 class FuzzyNotes::Cipher
   include FuzzyNotes::Logger
+  include FuzzyNotes::PasswordProtected
 
   PLAINTEXT_EXT  = 'txt'
   CIPHERTEXT_EXT = 'enc'
@@ -43,10 +44,10 @@ private
     dirname  = File.dirname(path)
     filename = File.basename(path, '.*')
 
-    log.debug "writing #{decrypt? ? 'un' : ''}encrypted content to: #{dirname}/#{filename}.#{extension}"
+    log.info "#{Colors::CREATE} writing #{decrypt? ? 'un' : ''}encrypted file: #{Colors::PATH} #{dirname}/#{filename}.#{extension}"
     File.open("#{dirname}/#{filename}.#{extension}", 'w') { |f| f << contents }
 
-    log.debug "deleting #{decrypt? ? '' : 'un'}encrypted file: #{path}"
+    log.info "#{Colors::DELETE} deleting #{decrypt? ? '' : 'un'}encrypted file: #{Colors::PATH} #{path}"
     File.delete(path)
   end
 
@@ -57,13 +58,5 @@ private
   def decrypt?
     @action == :dec
   end
-
-  def get_password
-    printf 'Enter password (will not be shown):'
-    `stty -echo`; password = STDIN.gets.strip;`stty echo`; puts "\n\n"
-    log.debug "entered password: #{password.inspect}"
-    password
-  end
-
 
 end

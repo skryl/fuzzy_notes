@@ -5,8 +5,9 @@ class FuzzyNotes::Log
   LOG_LEVEL = 1
   
 
-  def self.init_log(log_level)
+  def self.init_log(log_level, color)
     @log = BufferedLogger.new(STDOUT, log_level || LOG_LEVEL, default_format)
+    log.disable_color unless color
   end
 
   def self.log
@@ -16,16 +17,25 @@ class FuzzyNotes::Log
 private
   
   def self.default_format
-    { :debug => "$negative DEBUG: $white %s",
-      :info  => "$green INFO: $white %s",
-      :warn  => "$yellow WARNING: $white %s",
-      :error => "$red ERROR: $white %s" }
+    { :debug => "$negative DEBUG: $reset %s",
+      :warn  => "$yellow WARNING: $reset %s",
+      :error => "$red ERROR: $reset %s" }
   end
 
 end
 
 
 module FuzzyNotes::Logger
+  module Colors
+    PATH = "$blue"
+    USER = "$green"
+    NOTE = "$cyan"
+    NUMBER = "$red"
+    CREATE = "$green"
+    DELETE = "$red"
+    DEFAULT = "$reset"
+  end
+
   def log
     FuzzyNotes::Log.log
   end
