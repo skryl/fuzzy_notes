@@ -33,6 +33,8 @@ module FuzzyNotes::Logger
     NUMBER = "$red"
     CREATE = "$green"
     DELETE = "$red"
+    IMPORT = "$green"
+    EXPORT = "$red"
     DEFAULT = "$reset"
   end
 
