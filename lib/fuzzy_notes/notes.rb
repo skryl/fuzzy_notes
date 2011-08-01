@@ -130,7 +130,7 @@ private
   end
 
   def inspect_instance_vars
-    instance_variables.inject("") { |s, ivar| s << "  #{ivar} => #{eval(ivar).inspect}\n" }
+    instance_variables.inject("") { |s, ivar| s << "  #{ivar} => #{eval(ivar.to_s).inspect}\n" }
   end
 
   def evernote?(path)
