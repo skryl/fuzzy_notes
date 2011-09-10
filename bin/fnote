@@ -9,36 +9,38 @@ require 'rubygems'
 require 'fuzzy_notes'
 
 CONFIG_PATH = "#{ENV['HOME']}/.fuzzy_notes"
+OPT_ACTIONS = [:print, :list, :info, :encrypt, :decrypt].freeze
+OPT_KEYWORDS_REQUIRED = [:print, :edit, :encrypt, :decrypt].freeze
 
 options = {}
 optparse = OptionParser.new do |opts|
   opts.banner = "Usage: fnote [options] [keyword1, keyword2...]"
 
   opts.on("-c", "--config [CONFIG]", "Specify config file") { |opt| options[:config] = opt}
+  opts.on("-n", "--note-path [PATH]", "Specify config file") { |opt| options[:note_path] = opt}
+  opts.on("--editor [EDITOR]", "Editor of choice") { |opt| options[:editor] = opt}
+  opts.on("-s", "--search", "Perform a full text search when matching notes") { |opt| options[:search] = true}
   opts.on("-p", "--print", "Dump matching notes to stdout") { |opt| options[:print] = true }
-  opts.on("-l", "--list", "List matching notes") { |opt| options[:list] = true }
+  opts.on("-l", "--list", "List all or matching notes") { |opt| options[:list] = true }
   opts.on("-i", "--info", "Show statistics for matching notes") { |opt| options[:info] = true }
-  opts.on("-s", "--search", "Perform a full text search when matching notes") { |opt| options[:search] = true }
-  opts.on("-v", "--verbose", "Enable debug output") { |opt| options[:verbose] = true }
   opts.on("-e", "--encrypt", "Encrypt matching notes") { |opt| options[:encrypt] = true }
   opts.on("-d", "--decrypt", "Decrypt matching notes") { |opt| options[:decrypt] = true }
-  opts.on("-n", "--no-color", "Turn off ANSI color") { |opt| options[:color] = false}
-  opts.on("-u", "--evernote-update", "Synchronize evernote directory") { |opt| options[:evernote_update] = true }
+  opts.on("-v", "--verbose", "Enable debug output") { |opt| options[:verbose] = true }
+  opts.on("--no-color", "Turn off ANSI color") { |opt| options[:no_color] = true}
+  opts.on("-u", "--update-evernotes", "Synchronize evernote directory") { |opt| options[:update_evernotes] = true }
   opts.on("-h", "--help", "Show this message") { 
     puts opts 
     exit
   }
 end
 
-need_extra_args = [:print, :edit, :encrypt, :decrypt]
-
+# parse args
+#
 begin
   optparse.parse!(ARGV)                                                                                                                                                                                                 
-  # edit is the default action
-  options[:edit] = true if options.values.compact.empty?
-
+  options[:edit] = true if options.values_at(OPT_ACTIONS).empty?
   # check for required args
-  if need_extra_args.any? {|opt| options[opt]} && ARGV.empty?
+  if OPT_KEYWORDS_REQUIRED.any? {|opt| options[opt]} && ARGV.empty?
     puts optparse
     exit
   end
@@ -51,18 +53,21 @@ end
 config_path = \
   File.exists?(options[:config].to_s) && options[:config] ||
   File.exists?(CONFIG_PATH) && CONFIG_PATH
-
 config = config_path ? YAML::load_file(config_path) : {}
 log.info("config file not found, using defaults") if config.empty?
 
-notes = FuzzyNotes::Notes.new(:editor => config[:editor],
-                              :note_paths => config[:note_paths], 
+# grab notes
+# 
+notes = FuzzyNotes::Notes.new(:editor => options[:editor] || config[:editor],
+                              :note_paths => [options[:note_path] || config[:note_paths]].flatten, 
                               :evernote_params => config[:evernote],
                               :full_text_search => options[:search] || config[:full_text_search],
                               :log_level => (options[:verbose] || config[:verbose]) ? :debug : :info,
-                              :color => (options[:color] == false || config[:color] == false) ? false : true,
+                              :color => (options[:no_color] || config[:no_color]) ? false : true,
                               :keywords => ARGV)
                              
+# perform action
+#
 notes.evernote_sync if options[:evernote_update]
 
 if options[:list]

@@ -1,2 +1,10 @@
 TODO
+- ask for missing params during evernote AUTH
+- debugging output
+- figure out good output spacing
 - test suite
+- 1.9 testing
+- edit encrypted notes
+  - move to local temp dir
+  - open in editor
+  - encrypt and overwrite existing if changed

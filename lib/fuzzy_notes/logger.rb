@@ -27,16 +27,17 @@ end
 
 module FuzzyNotes::Logger
   module Colors
-    PATH = "$blue"
-    USER = "$green"
-    NOTE = "$cyan"
-    NUMBER = "$red"
-    CREATE = "$green"
-    DELETE = "$red"
-    IMPORT = "$green"
-    EXPORT = "$red"
-    DEFAULT = "$reset"
+    PATH_COLOR = "$blue"
+    USER_COLOR = "$green"
+    NOTE_COLOR = "$cyan"
+    NUMBER_COLOR = "$red"
+    CREATE_COLOR = "$green"
+    DELETE_COLOR = "$red"
+    IMPORT_COLOR = "$green"
+    EXPORT_COLOR = "$red"
+    DEFAULT_COLOR = "$reset"
   end
+  include Colors
 
   def log
     FuzzyNotes::Log.log

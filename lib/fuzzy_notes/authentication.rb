@@ -1,4 +1,9 @@
-module FuzzyNotes::PasswordProtected
+module FuzzyNotes::Authentication
+  
+  def get_username
+    printf 'Enter username: '
+    gets
+  end
 
   def get_password
     printf 'Enter password (will not be shown):'

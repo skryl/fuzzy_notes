@@ -6,13 +6,12 @@ require 'ostruct'
 
 class FuzzyNotes::EvernoteSync
   include FuzzyNotes::Logger
-  include Colors
-  include FuzzyNotes::PasswordProtected
+  include FuzzyNotes::Authentication
 
-USER_STORE_URL = 'https://evernote.com/edam/user'
-NOTE_STORE_URL = 'http://evernote.com/edam/note'
-NOTE_EXT = 'html'
-MAX_NOTES = 1000
+  USER_STORE_URL = 'https://evernote.com/edam/user'
+  NOTE_STORE_URL = 'http://evernote.com/edam/note'
+  NOTE_EXT = 'html'
+  MAX_NOTES = 1000
 
   # opts should be a hash with the following keys:
   # :username, :password, :consumer_key, :consumer_secret
@@ -26,16 +25,17 @@ MAX_NOTES = 1000
 
   def sync
     return unless authenticated? && valid_sync_path?
-    log.info "#{IMPORT} synchronizing with Evernote account..."
-    log.indent(2) { log.info "#{IMPORT} checking for updates..." }
+    log.info "syncing evernote directory #{PATH_COLOR} #{@note_path}"
+    log.info "#{IMPORT_COLOR} synchronizing with Evernote account..."
+    log.indent(2) { log.info "#{IMPORT_COLOR} checking for updates..." }
     log.indent(4) do
       notebook_structs = fetch_notebooks
-      log.info "#{IMPORT} syncing Evernote deletions..."
+      log.info "#{IMPORT_COLOR} syncing Evernote deletions..."
       log.indent(2) do
         propagate_evernote_deletions(notebook_structs)
       end
       notebook_structs.each do |notebook_struct|
-        log.info "#{IMPORT} syncing notebook #{NOTE} #{notebook_struct.name}"
+        log.info "#{IMPORT_COLOR} syncing notebook #{NOTE_COLOR} #{notebook_struct.name}"
         log.indent(2) do
           create_local_notebook(notebook_struct)
           sync_notes(notebook_struct)
@@ -75,26 +75,33 @@ private
   def propagate_evernote_deletions(notebook_structs)
     evernote_dir_entries = Dir["#{@path}/*"]
     evernote_dir_entries.each do |notebook_path|
-      notebook_name = File.basename(notebook_path)
-      notebook_match = notebook_structs.find { |ns| sanitize_filename(ns.name) == notebook_name }  
+      notebook_match = notebook_structs.find { |ns| sanitize_filename(ns.name) == File.basename(notebook_path) }  
       unless notebook_match
-        log.info "#{DELETE} notebook #{NOTE} #{notebook_name} #{DELETE} has been deleted from Evernote"
-        verify_deletion(notebook_path)
+        delete_notebook!(notebook_path)
       else
         note_entries = Dir["#{notebook_path}/*"]
         note_entries.each do |note_path|
-          note_title = File.basename(note_path, '.*')
-          unless notebook_match.notes.any? { |n| sanitize_filename(n.title) == note_title }
-            log.info "#{DELETE} note #{NOTE} #{note_title} #{DELETE} has been deleted from Evernote"
-            verify_deletion(note_path)
+          unless notebook_match.notes.any? { |n| sanitize_filename(n.title) == File.basename(note_path, '.*') }
+            delete_note!(note_path)
           end
         end
       end
     end
   end
 
+  def delete_notebook!(notebook_path)
+    log.info "#{DELETE_COLOR} notebook #{NOTE_COLOR} #{File.basename(notebook_path)} #{DELETE_COLOR} has been deleted from Evernote"
+    verify_deletion(notebook_path)
+  end
+
+  def delete_note!(note_path)
+    log.info "#{DELETE_COLOR} note #{NOTE_COLOR} #{File.basename(note_path, '.*')} #{DELETE_COLOR} has been deleted from Evernote"
+    verify_deletion(note_path)
+  end
+
   def sync_notes(notebook_struct)
-    note_updates = notebook_struct.notes.inject([[],[]]) do |(import, export), note| 
+    note_updates = \
+      notebook_struct.notes.inject([[],[]]) do |(import, export), note| 
       if needs_import?(notebook_struct, note)
         import << fetch_note_with_content(note)
       elsif needs_export?(notebook_struct, note)
@@ -109,7 +116,7 @@ private
   def import_notes(notebook_struct, notes)
     notes.each do |note|
       note_path = get_note_path(notebook_struct, note)
-      log.info "#{IMPORT} importing note #{NOTE} #{note.title} #{DEFAULT} with content length #{NUMBER} #{note.contentLength}"
+      log.info "#{IMPORT_COLOR} importing note #{NOTE_COLOR} #{note.title} #{DEFAULT_COLOR} with content length #{NUMBER_COLOR} #{note.contentLength}"
       File.open(note_path, 'w') { |f| f << note.content }
     end
   end
@@ -117,7 +124,7 @@ private
   def export_notes(notebook_struct, notes)
     notes.each do |note|
       note.content = local_note_content(notebook_struct, note)
-      log.info "#{EXPORT} exporting note #{NOTE} #{note.title} #{DEFAULT} with content length #{NUMBER} #{note.content.length}"
+      log.info "#{EXPORT_COLOR} exporting note #{NOTE_COLOR} #{note.title} #{DEFAULT_COLOR} with content length #{NUMBER_COLOR} #{note.content.length}"
       begin
         @note_store.updateNote(@token, note)
       rescue Evernote::EDAM::Error::EDAMUserException => e
@@ -210,18 +217,23 @@ private
     name
   end
 
+  def self.evernote?(path)
+    File.extname(path)[1..-1] == NOTE_EXT
+  end
+
 # authentication helpers
 
+#TODO: ask for all missing params
   def authenticate(params)
     params.merge!(:password => get_password)
     user_store = Evernote::UserStore.new(USER_STORE_URL, params)
     begin
       user_store.authenticate
     rescue Evernote::UserStore::AuthenticationFailure
-      log.error "Evernote authentication failed for #{USER} #{params[:username]}"
+      log.error "Evernote authentication failed for #{USER_COLOR} #{params[:username]}"
       return
     ensure
-      log.info "Evernote authentication was successful for #{USER} #{params[:username]}"
+      log.info "Evernote authentication was successful for #{USER_COLOR} #{params[:username]}"
     end
   end
 
