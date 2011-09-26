@@ -9,7 +9,7 @@ require 'rubygems'
 require 'fuzzy_notes'
 
 CONFIG_PATH = "#{ENV['HOME']}/.fuzzy_notes"
-OPT_ACTIONS = [:print, :list, :info, :encrypt, :decrypt].freeze
+OPT_ACTIONS = [:print, :list, :info, :encrypt, :decrypt, :update_evernotes].freeze
 OPT_KEYWORDS_REQUIRED = [:print, :edit, :encrypt, :decrypt].freeze
 
 options = {}
@@ -28,7 +28,7 @@ optparse = OptionParser.new do |opts|
   opts.on("-v", "--verbose", "Enable debug output") { |opt| options[:verbose] = true }
   opts.on("--no-color", "Turn off ANSI color") { |opt| options[:no_color] = true}
   opts.on("-u", "--update-evernotes", "Synchronize evernote directory") { |opt| options[:update_evernotes] = true }
-  opts.on("-h", "--help", "Show this message") { 
+  opts.on("-h", "--help", "Show usage") { 
     puts opts 
     exit
   }
@@ -38,7 +38,7 @@ end
 #
 begin
   optparse.parse!(ARGV)                                                                                                                                                                                                 
-  options[:edit] = true if options.values_at(OPT_ACTIONS).empty?
+  options[:edit] = true if options.values_at(*OPT_ACTIONS).compact.empty?
   # check for required args
   if OPT_KEYWORDS_REQUIRED.any? {|opt| options[opt]} && ARGV.empty?
     puts optparse
@@ -68,10 +68,10 @@ notes = FuzzyNotes::Notes.new(:editor => options[:editor] || config[:editor],
                              
 # perform action
 #
-notes.evernote_sync if options[:evernote_update]
-
 if options[:list]
   notes.list
+elsif options[:update_evernotes]
+  notes.evernote_sync
 elsif options[:info]
   notes.info
 elsif options[:print]

@@ -48,11 +48,15 @@ private
   end
 
   def full_text_match?(file_path)
-    unless @keywords.blank?
+    unless @keywords.blank? || encrypted_file?(file_path)
       file_contents = File.read(file_path)
       @keywords.any? { |key| /#{key}/m === file_contents }
     else false 
     end
+  end
+
+  def encrypted_file?(path)
+    /\.#{FuzzyNotes::Cipher::CIPHERTEXT_EXT}$/ === path
   end
 
 

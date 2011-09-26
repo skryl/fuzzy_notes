@@ -8,7 +8,7 @@ class FuzzyNotes::EvernoteSync
   include FuzzyNotes::Logger
   include FuzzyNotes::Authentication
 
-  USER_STORE_URL = 'https://evernote.com/edam/user'
+  USER_STORE_URL = 'http://evernote.com/edam/user'
   NOTE_STORE_URL = 'http://evernote.com/edam/note'
   NOTE_EXT = 'html'
   MAX_NOTES = 1000
@@ -25,7 +25,7 @@ class FuzzyNotes::EvernoteSync
 
   def sync
     return unless authenticated? && valid_sync_path?
-    log.info "syncing evernote directory #{PATH_COLOR} #{@note_path}"
+    log.info "syncing evernote directory #{PATH_COLOR} #{@path}"
     log.info "#{IMPORT_COLOR} synchronizing with Evernote account..."
     log.indent(2) { log.info "#{IMPORT_COLOR} checking for updates..." }
     log.indent(4) do
@@ -201,7 +201,7 @@ private
   def verify_deletion(path)
     r = nil
     until r =~ /(Y|y|N|n)/ do
-      printf "Are you sure you want to delete #{path}? (Y/N) "
+      log.info "Are you sure you want to delete #{path}? (Y/N) "
       r = gets
     end
 
@@ -223,17 +223,17 @@ private
 
 # authentication helpers
 
-#TODO: ask for all missing params
+  #TODO: ask for all missing params
   def authenticate(params)
     params.merge!(:password => get_password)
     user_store = Evernote::UserStore.new(USER_STORE_URL, params)
     begin
-      user_store.authenticate
+      token = user_store.authenticate
+      log.info "Evernote authentication was successful for #{USER_COLOR} #{params[:username]}"
+      token
     rescue Evernote::UserStore::AuthenticationFailure
       log.error "Evernote authentication failed for #{USER_COLOR} #{params[:username]}"
       return
-    ensure
-      log.info "Evernote authentication was successful for #{USER_COLOR} #{params[:username]}"
     end
   end
 

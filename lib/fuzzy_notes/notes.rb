@@ -16,21 +16,22 @@ module Defaults
   def self.const_missing(*args); end
 end
 
-  VALID_PARAMS = [:log_level, :no_color, :editor, :note_paths, :valid_extensions, :keywords, :evernote_params].freeze
+  VALID_PARAMS = [:log_level, :color, :editor, :note_paths, :valid_extensions, :keywords, :evernote_params].freeze
 
   attr_reader :matching_notes, :all_notes
 
   def initialize(params = {})
     parse_init_params(params)
-    FuzzyNotes::Log.init_log(@log_level, !@no_color)
+    FuzzyNotes::Log.init_log(@log_level, @color)
     log.debug "init params: \n#{inspect_instance_vars}"
     exit unless note_paths_valid?
 
     finder = FuzzyNotes::FuzzyFinder.new(@note_paths, 
                                         { :keywords => @keywords, 
-                                          :extensions => @extensions, 
+                                          :extensions => @valid_extensions, 
                                           :full_text_search => params[:full_text_search] })
     @all_notes, @matching_notes = finder.files_matching_extension, finder.files_matching_all
+    @cipher = FuzzyNotes::Cipher.new
   end
 
   # dump all matching notes to stdout
@@ -38,7 +39,7 @@ end
   def cat
     unless encrypted_notes.empty?
       print_notes(:encrypted => true)
-      decrypted_notes = FuzzyNotes::Cipher.new.decrypt_files(encrypted_notes)
+      decrypted_notes = @cipher.decrypt_files(encrypted_notes)
     end
 
     matching_notes.each do |note_path|
@@ -64,8 +65,7 @@ end
     notes_to_edit = \
       unless encrypted_notes.empty?
         print_notes(:encrypted => true)
-        decrypted_tempfiles = FuzzyNotes::Cipher.new.decrypt_to_tempfiles(encrypted_notes)
-        notes_tempfiles = decrypted_tempfiles.zip(encrypted_notes)
+        decrypted_tempfiles = @cipher.decrypt_to_tempfiles(encrypted_notes)
         successfully_decrypted_files = decrypted_tempfiles.compact 
         plaintext_notes + successfully_decrypted_files
       else plaintext_notes
@@ -77,8 +77,15 @@ end
     end
 
     # reencrypt decrypted notes
-    unless successfully_decrypted_files.empty? 
-      FuzzyNotes::Cipher.new.encrypt_from_tempfiles(notes_tempfiles) 
+    unless encrypted_notes.empty? || successfully_decrypted_files.empty? 
+      log.info "#{CREATE_COLOR} re-encrypting edited notes:"
+      tempfiles_notes = decrypted_tempfiles.zip(encrypted_notes)
+      log.indent do
+        tempfiles_notes.each do |(tmpfile, note_path)|
+          log.info "#{PATH_COLOR} #{note_path}" if note_path
+        end
+      end
+      log.indent { @cipher.encrypt_from_tempfiles(tempfiles_notes) } 
     end
   end
 
@@ -88,7 +95,7 @@ end
     return if plaintext_notes.empty?
     print_notes(:plaintext => true)
     log.indent do 
-      FuzzyNotes::Cipher.new.encrypt_files(plaintext_notes, :replace => true)
+      @cipher.encrypt_files(plaintext_notes, :replace => true)
     end
   end
 
@@ -98,7 +105,7 @@ end
     return if encrypted_notes.empty?
     print_notes(:encrypted => true)
     log.indent do
-      FuzzyNotes::Cipher.new.decrypt_files(encrypted_notes, :replace => true)
+      @cipher.decrypt_files(encrypted_notes, :replace => true)
     end
   end
 
@@ -172,7 +179,7 @@ private
     
     notes.flatten!
     keys = params.keys.reject { |k| k == :all_if_empty }
-    log.info "#{keys.join(',')} notes:"
+    log.info "#{keys.join(',')} notes:" unless keys.empty?
     log.indent { notes.each { |note| log.info "#{PATH_COLOR} #{note}" } }
   end
 

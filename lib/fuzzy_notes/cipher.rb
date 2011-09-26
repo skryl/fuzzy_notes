@@ -44,9 +44,9 @@ private
 
   def process_file(path, cipher, opts = {}) 
     return unless path && valid_filename?(path)
-    log.info "#{decrypt? ? 'de' : 'en'}crypting file #{PATH_COLOR} #{path}"
     content = File.read(path)
     return unless valid_content?(content)
+    log.info "#{decrypt? ? 'de' : 'en'}crypting file #{PATH_COLOR} #{path}"
 
     processed_content = process_data(content, cipher)
     replace_file!(path, processed_content) if processed_content && opts[:replace]
@@ -74,16 +74,21 @@ private
   end
 
   def decrypt_to_tempfile(file_path, cipher)
+    return unless file_path
     content = process_file(file_path, cipher)
     content && Tempfile.open(TMP_FILE_PREFIX) do |tmp_file|
-        tmp_file << content
-        tmp_file.path
+      tmp_file << content
+      tmp_file.path
     end
   end
 
   def encrypt_from_tempfile(tmp_file, file_path, cipher)
+    return unless tmp_file && file_path
     content = File.read(tmp_file)
-    content && File.open(file_path, 'w') do |file|
+    return unless valid_content?(content)
+
+    log.info "#{CREATE_COLOR} writing encrypted file: #{PATH_COLOR} #{file_path}"
+    File.open(file_path, 'w') do |file|
       file << process_data(content, cipher)
     end
   end

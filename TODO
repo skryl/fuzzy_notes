@@ -5,3 +5,4 @@ TODO
 - figure out good output spacing
 - test suite
 - 1.9 testing
+- add a per-note password option for enc/dec
