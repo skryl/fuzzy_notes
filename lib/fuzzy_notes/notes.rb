@@ -24,7 +24,7 @@ end
     parse_init_params(params)
     FuzzyNotes::Log.init_log(@log_level, @color)
     log.debug "init params: \n#{inspect_instance_vars}"
-    exit unless note_paths_valid?
+    @note_paths = prune_invalid_note_paths!
 
     finder = FuzzyNotes::FuzzyFinder.new(@note_paths, 
                                         { :keywords => @keywords, 
@@ -140,16 +140,20 @@ private
                                                              !FuzzyNotes::EvernoteSync.evernote?(note_path) }
   end
 
-
-  def note_paths_valid?
-    valid_path_exists = @note_paths.any? do |p| 
-      File.directory?(p) || log.warn("note path #{PATH_COLOR} #{p} does not exist")
+  def prune_invalid_note_paths!
+    valid_paths = []
+    @note_paths.each do |path| 
+      if File.directory?(path) 
+        valid_paths << path
+      else
+        log.warn("note path #{PATH_COLOR} #{path} #{DEFAULT_COLOR} does not exist")
+      end
     end
-    unless valid_path_exists
+    if valid_paths.empty?
       log.error "no valid note paths found, exiting"
-      false
-    else true
+      exit
     end
+    valid_paths
   end
 
   # TODO: grab creds from user
