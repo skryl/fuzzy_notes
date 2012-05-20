@@ -59,6 +59,7 @@ log.info("config file not found, using defaults") if config.empty?
 # grab notes
 # 
 notes = FuzzyNotes::Notes.new(:editor => options[:editor] || config[:editor],
+                              :valid_extensions => config[:valid_extensions],
                               :note_paths => [options[:note_path] || config[:note_paths]].flatten, 
                               :evernote_params => config[:evernote],
                               :full_text_search => options[:search] || config[:full_text_search],

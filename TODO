@@ -1,8 +1,10 @@
 TODO
 - README
+- image support
+- easily add directories to search path
+- ability to create notes
 - ask for missing params during evernote AUTH
 - debugging output
 - figure out good output spacing
 - test suite
-- 1.9 testing
 - add a per-note password option for enc/dec
