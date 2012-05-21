@@ -1,6 +1,5 @@
 #!/usr/bin/env ruby
 
-# test without installing gem
 $LOAD_PATH.unshift "#{File.dirname(File.expand_path(__FILE__))}/../lib/"
 
 require 'optparse'
@@ -9,25 +8,26 @@ require 'rubygems'
 require 'fuzzy_notes'
 
 CONFIG_PATH = "#{ENV['HOME']}/.fuzzy_notes"
-OPT_ACTIONS = [:print, :list, :info, :encrypt, :decrypt, :update_evernotes].freeze
-OPT_KEYWORDS_REQUIRED = [:print, :edit, :encrypt, :decrypt].freeze
+OPT_ACTIONS = [:add_path, :rm_path, :preview, :list, :info, :encrypt, :decrypt, :update_evernotes].freeze
+OPT_KEYWORDS_REQUIRED = [:preview, :edit, :encrypt, :decrypt].freeze
 
 options = {}
 optparse = OptionParser.new do |opts|
   opts.banner = "Usage: fnote [options] [keyword1, keyword2...]"
 
-  opts.on("-c", "--config [CONFIG]", "Specify config file") { |opt| options[:config] = opt}
-  opts.on("-n", "--note-path [PATH]", "Specify config file") { |opt| options[:note_path] = opt}
-  opts.on("--editor [EDITOR]", "Editor of choice") { |opt| options[:editor] = opt}
-  opts.on("-s", "--search", "Perform a full text search when matching notes") { |opt| options[:search] = true}
-  opts.on("-p", "--print", "Dump matching notes to stdout") { |opt| options[:print] = true }
+  opts.on("-c", "--config [CONFIG]", "Specify config file") { |opt| options[:config] = opt }
+  opts.on("-t", "--editor [EDITOR]", "Editor of choice") { |opt| options[:editor] = opt }
+  opts.on("-a", "--add-path [PATH]", "Add a note path to the config file") { |opt| options[:add_path] = opt }
+  opts.on("-r", "--rm-path [PATH]", "Remove a note path from the config file") { |opt| options[:rm_path] = opt }
+  opts.on("-s", "--search", "Perform a full text search when matching notes") { |opt| options[:search] = true }
+  opts.on("-p", "--preview", "Dump matching notes to stdout or preview images") { |opt| options[:preview] = true }
   opts.on("-l", "--list", "List all or matching notes") { |opt| options[:list] = true }
-  opts.on("-i", "--info", "Show statistics for matching notes") { |opt| options[:info] = true }
+  opts.on("-i", "--info", "Show stats for matching notes") { |opt| options[:info] = true }
   opts.on("-e", "--encrypt", "Encrypt matching notes") { |opt| options[:encrypt] = true }
   opts.on("-d", "--decrypt", "Decrypt matching notes") { |opt| options[:decrypt] = true }
   opts.on("-v", "--verbose", "Enable debug output") { |opt| options[:verbose] = true }
-  opts.on("--no-color", "Turn off ANSI color") { |opt| options[:no_color] = true}
   opts.on("-u", "--update-evernotes", "Synchronize evernote directory") { |opt| options[:update_evernotes] = true }
+  opts.on("--no-color", "Turn off ANSI color") { |opt| options[:no_color] = true }
   opts.on("-h", "--help", "Show usage") { 
     puts opts 
     exit
@@ -56,11 +56,29 @@ config_path = \
 config = config_path ? YAML::load_file(config_path) : {}
 log.info("config file not found, using defaults") if config.empty?
 
-# grab notes
+# add/remove note path from config
+#
+if options[:add_path] || options[:rm_path]
+  if options[:add_path]
+    full_path = File.expand_path(options[:add_path]) 
+    config[:note_paths] = (Array(config[:note_paths]) + Array(full_path)).uniq
+    puts "added '#{full_path}' to note paths"
+  else
+    full_path = File.expand_path(options[:rm_path]) 
+    config[:note_paths].reject! { |p| p == full_path }
+    puts "removed '#{full_path}' from note paths"
+  end
+ 
+  File.open(config_path, 'w') { |f| f << config.to_yaml }
+  exit
+end
+
+# process notes
 # 
 notes = FuzzyNotes::Notes.new(:editor => options[:editor] || config[:editor],
-                              :valid_extensions => config[:valid_extensions],
-                              :note_paths => [options[:note_path] || config[:note_paths]].flatten, 
+                              :viewer => config[:viewer],
+                              :user_valid_extensions => config[:valid_extensions],
+                              :note_paths => config[:note_paths].flatten, 
                               :evernote_params => config[:evernote],
                               :full_text_search => options[:search] || config[:full_text_search],
                               :log_level => (options[:verbose] || config[:verbose]) ? :debug : :info,
@@ -75,12 +93,10 @@ elsif options[:update_evernotes]
   notes.evernote_sync
 elsif options[:info]
   notes.info
-elsif options[:print]
+elsif options[:preview]
   notes.cat
 elsif options[:encrypt]
   notes.encrypt
 elsif options[:decrypt]
   notes.decrypt
-else 
-  notes.edit
 end

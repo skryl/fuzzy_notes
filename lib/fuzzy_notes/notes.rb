@@ -1,37 +1,40 @@
 require 'tempfile'
 
-class FuzzyNotes::Notes
-  include FuzzyNotes::Logger
-
-module Defaults
+module FuzzyNotes::Defaults
   LOG_LEVEL   = :info
   EDITOR      = 'vim'
+  VIEWER      = 'open'
   KEYWORDS    = []
   NOTE_PATHS  = [ "#{ENV['HOME']}/notes" ]
-  VALID_EXTENSIONS = [ 'txt', 
+  FULL_TEXT_SEARCH = false
+  VALID_EXTENSIONS = [ FuzzyNotes::TextViewer::TXT_EXT, 
                        FuzzyNotes::Cipher::CIPHERTEXT_EXT, 
                        FuzzyNotes::Cipher::PLAINTEXT_EXT, 
-                       FuzzyNotes::EvernoteSync::NOTE_EXT ]
+                       FuzzyNotes::EvernoteSync::NOTE_EXT] + 
+                       FuzzyNotes::ImageViewer::IMG_EXTS
 
   def self.const_missing(*args); end
 end
 
-  VALID_PARAMS = [:log_level, :color, :editor, :note_paths, :valid_extensions, :keywords, :evernote_params].freeze
+class FuzzyNotes::Notes
+  include FuzzyNotes::Logger
+
+  VALID_PARAMS = [:log_level, :color, :editor, :viewer, :note_paths,
+                  :valid_extensions, :user_valid_extensions, :full_text_search,
+                  :keywords, :evernote_params].freeze
 
   attr_reader :matching_notes, :all_notes
 
   def initialize(params = {})
-    parse_init_params(params)
-    FuzzyNotes::Log.init_log(@log_level, @color)
-    log.debug "init params: \n#{inspect_instance_vars}"
-    @note_paths = prune_invalid_note_paths!
-
-    finder = FuzzyNotes::FuzzyFinder.new(@note_paths, 
-                                        { :keywords => @keywords, 
-                                          :extensions => @valid_extensions, 
-                                          :full_text_search => params[:full_text_search] })
-    @all_notes, @matching_notes = finder.files_matching_extension, finder.files_matching_all
-    @cipher = FuzzyNotes::Cipher.new
+    @params = params
+    parse_init_params
+    
+    init_logger
+    init_cipher
+    init_finder
+    
+    @all_notes = @finder.files_matching_extension 
+    @matching_notes = @finder.files_matching_all
   end
 
   # dump all matching notes to stdout
@@ -48,8 +51,10 @@ end
           decrypted_notes.shift
         elsif FuzzyNotes::EvernoteSync.evernote?(note_path)
           FuzzyNotes::EvernoteSync.sanitize_evernote(note_path)
+        elsif FuzzyNotes::ImageViewer.image?(note_path)
+          FuzzyNotes::ImageViewer.display(@viewer, note_path)
         else
-          File.read(note_path)
+          FuzzyNotes::TextViewer.read(note_path)
         end
 
       if contents
@@ -73,7 +78,7 @@ end
 
     # edit decrypted files
     unless notes_to_edit.empty?
-      system("#{editor} #{bashify_note_paths(notes_to_edit)}")
+      system("#{@editor} #{bashify_note_paths(notes_to_edit)}")
     end
 
     # reencrypt decrypted notes
@@ -127,6 +132,36 @@ end
 
 private
 
+  # initialize to params or use defaults
+  #
+  def parse_init_params
+    VALID_PARAMS.each do |param|
+      default_const = param.to_s.upcase
+
+     val = @params[param] || FuzzyNotes::Defaults.const_get(default_const)
+     instance_variable_set("@#{param}", val) 
+    end
+  end
+
+  def init_logger
+    FuzzyNotes::Log.init_log(@log_level, @color)
+  end
+
+  def init_cipher
+    @cipher = FuzzyNotes::Cipher.new
+  end
+
+  def init_finder
+    @finder = FuzzyNotes::FuzzyFinder.new(valid_note_paths, 
+                                        { :keywords => @keywords, 
+                                          :extensions => valid_extensions,
+                                          :full_text_search => @full_text_search })
+  end
+
+  def valid_extensions
+    (@valid_extensions + @user_valid_extensions).uniq
+  end
+
   def encrypted_notes
     @encrypted_notes ||= matching_notes.select { |note_path| FuzzyNotes::Cipher.encrypted?(note_path) }
   end
@@ -140,7 +175,7 @@ private
                                                              !FuzzyNotes::EvernoteSync.evernote?(note_path) }
   end
 
-  def prune_invalid_note_paths!
+  def valid_note_paths
     valid_paths = []
     @note_paths.each do |path| 
       if File.directory?(path) 
@@ -149,10 +184,12 @@ private
         log.warn("note path #{PATH_COLOR} #{path} #{DEFAULT_COLOR} does not exist")
       end
     end
+
     if valid_paths.empty?
       log.error "no valid note paths found, exiting"
       exit
     end
+
     valid_paths
   end
 
@@ -177,6 +214,7 @@ private
     notes << encrypted_notes if params[:encrypted]
     notes << evernote_notes if params[:evernote]
     notes << plaintext_notes if params[:plaintext]
+
     if notes.empty?
       notes << matching_notes(:all_if_empty => true)
     end
@@ -190,27 +228,5 @@ private
   def matching_notes(params = {})
     (@matching_notes.empty? && params[:all_if_empty]) ? @all_notes : @matching_notes
   end
-
-  # initialize to params or use defaults
-  #
-  def parse_init_params(params)
-    VALID_PARAMS.each do |param|
-      klass = self.class
-      klass.send(:attr_reader, param)
-      default_const = param.to_s.upcase
-
-      value = \
-        if params.include?(param) 
-          params[param] 
-        else Defaults.const_get(default_const)
-        end
-     instance_variable_set("@#{param}", value) 
-    end
-  end
-
-  def inspect_instance_vars
-    instance_variables.inject("") { |s, ivar| s << "  #{ivar} => #{eval(ivar.to_s).inspect}\n" }
-  end
-
 
 end
