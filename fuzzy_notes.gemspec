@@ -4,7 +4,7 @@ spec = Gem::Specification.new do |s|
 
   s.summary = "A cli note manager"
   s.description = %{A note manager with fuzzy path search, full text search, evernote sync, and encryption capabilities}
-  s.files = Dir['lib/**/*.rb'] + ['bin/fnote'] + ["README", "TODO"]
+  s.files = Dir['lib/**/*.rb'] + ['bin/fnote'] + ["README.md", "TODO"]
   s.require_path = 'lib'
   s.bindir = 'bin'
   s.executables << 'fnote'
