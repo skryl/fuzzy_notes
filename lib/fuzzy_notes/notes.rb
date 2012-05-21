@@ -20,7 +20,7 @@ class FuzzyNotes::Notes
   include FuzzyNotes::Logger
 
   VALID_PARAMS = [:log_level, :color, :editor, :viewer, :note_paths,
-                  :valid_extensions, :user_valid_extensions, :full_text_search,
+                  :valid_extensions, :custom_extensions, :full_text_search,
                   :keywords, :evernote_params].freeze
 
   attr_reader :matching_notes, :all_notes
@@ -159,7 +159,7 @@ private
   end
 
   def valid_extensions
-    (@valid_extensions + @user_valid_extensions).uniq
+    (@valid_extensions + @custom_extensions).uniq
   end
 
   def encrypted_notes
@@ -172,7 +172,8 @@ private
 
   def plaintext_notes
     @plaintext_notes ||= matching_notes.select { |note_path| !FuzzyNotes::Cipher.encrypted?(note_path) && 
-                                                             !FuzzyNotes::EvernoteSync.evernote?(note_path) }
+                                                             !FuzzyNotes::EvernoteSync.evernote?(note_path) &&
+                                                             !FuzzyNotes::ImageViewer.image?(note_path)}
   end
 
   def valid_note_paths

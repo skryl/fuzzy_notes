@@ -77,7 +77,7 @@ end
 # 
 notes = FuzzyNotes::Notes.new(:editor => options[:editor] || config[:editor],
                               :viewer => config[:viewer],
-                              :user_valid_extensions => config[:valid_extensions],
+                              :custom_extensions => config[:custom_extensions],
                               :note_paths => config[:note_paths].flatten, 
                               :evernote_params => config[:evernote],
                               :full_text_search => options[:search] || config[:full_text_search],
