@@ -173,7 +173,7 @@ private
   def plaintext_notes
     @plaintext_notes ||= matching_notes.select { |note_path| !FuzzyNotes::Cipher.encrypted?(note_path) && 
                                                              !FuzzyNotes::EvernoteSync.evernote?(note_path) &&
-                                                             !FuzzyNotes::ImageViewer.image?(note_path)}
+                                                             !FuzzyNotes::ImageViewer.image?(note_path) }
   end
 
   def valid_note_paths

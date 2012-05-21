@@ -99,4 +99,6 @@ elsif options[:encrypt]
   notes.encrypt
 elsif options[:decrypt]
   notes.decrypt
+else
+  notes.edit
 end
