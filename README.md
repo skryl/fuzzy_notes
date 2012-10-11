@@ -1,9 +1,9 @@
 ## About
 
-*fuzzy_notes* is a command line document viewer with some cool features:
+*fuzzy_notes* is a command line note management tool with some cool features.
 
-1. Supports Emacs/Vim/MacVim and other CLI text editors
-2. Supports viewing image files using a user specified CLI viewer (eg. open, display)
+1. Supports Emacs/Vim/MacVim/Sublime and other editors/viewers with a CLI wrapper.
+2. Supports viewing image files using a user specified image viewer (eg. open, display)
 3. Fuzzy path search and full text search across one or more note directories
 4. OpenSSL encryption for text notes
 5. Evernote synchronization

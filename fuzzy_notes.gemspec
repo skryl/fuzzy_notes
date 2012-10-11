@@ -1,19 +1,23 @@
-spec = Gem::Specification.new do |s|
-  s.name = 'fuzzy_notes'
-  s.version = '0.1.4'
+lib = File.expand_path('../lib', __FILE__)
+$LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
+require 'fuzzy_notes/version'
 
-  s.summary = "A cli note manager"
-  s.description = %{A note manager with fuzzy path search, full text search, evernote sync, and encryption capabilities}
-  s.files = Dir['lib/**/*.rb'] + ['bin/fnote'] + ["README.md", "TODO"]
-  s.require_path = 'lib'
-  s.bindir = 'bin'
-  s.executables << 'fnote'
-  s.author = "Alex Skryl"
-  s.email = "rut216@gmail.com"
-  s.homepage = "http://github.com/skryl"
+spec = Gem::Specification.new do |gem|
+  gem.name          = "fuzzy_notes"
+  gem.version       = FuzzyNotes::VERSION
+  gem.authors       = ["Alex Skryl"]
+  gem.email         = ["rut216@gmail.com"]
+  gem.summary       = %q{A CLI note management tool}
+  gem.description   = %q{A CLI note manager featuring fuzzy path search, full text search, evernote sync, and encryption capabilities}
+  gem.homepage      = "https://github.com/skryl/fuzzy_notes"
 
-  s.add_dependency(%q<buffered_logger>, [">= 0.1.2"])
-  s.add_dependency(%q<gibberish>, [">= 0"])
-  s.add_dependency(%q<evernote>, [">= 0"])
-  s.add_dependency(%q<sanitize>, [">= 0"])
+  gem.files         = `git ls-files`.split($/)
+  gem.executables   = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
+  gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
+  gem.require_paths = ["lib"]
+
+  gem.add_dependency(%q<buffered_logger>, [">= 0.1.2"])
+  gem.add_dependency(%q<gibberish>, [">= 0"])
+  gem.add_dependency(%q<evernote>, [">= 0"])
+  gem.add_dependency(%q<sanitize>, [">= 0"])
 end

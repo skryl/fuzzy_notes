@@ -1,4 +1,5 @@
 TODO
+- don't ask for password if encrypted note hasn't changed
 - ability to create notes
 - ask for missing params during evernote AUTH
 - debugging output
